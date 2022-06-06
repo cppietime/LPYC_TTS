@@ -33,21 +33,23 @@ class Console:
             self.stream.stop_stream()
         else:
             print('starting')
+            self.data_index = 0
             self.stream.start_stream()
         self.playing = not self.playing
     
     def play(self, indices: List[int], duration: float = 0.01,\
-            dst: Optional[Union[str, io.IOBase]] = None, shuffle: bool = False)\
+            dst: Optional[Union[str, io.IOBase]] = None, shuffle: bool = False,\
+            repeat: bool = True)\
             -> None:
         if not indices:
             return
         if shuffle:
             indices = list(indices) * max(1, 20 // len(indices))
             random.shuffle(indices)
-        Thread(target = self._play, args = (indices, duration, dst)).start()
+        Thread(target = self._play, args = (indices, duration, dst, repeat)).start()
     
     def _play(self, indices: List[int], duration: float = 0.01,\
-            dst: Optional[Union[str, io.IOBase]] = None)\
+            dst: Optional[Union[str, io.IOBase]] = None, repeat: bool = True)\
             -> None:
         self.lock.acquire()
         try:
@@ -60,6 +62,9 @@ class Console:
                     self.freq / self.framerate,\
                     round(self.framerate * duration))
                 sample_array += (frame_played * 32767).astype('<h').tobytes()
+            
+            if not repeat:
+                sample_array += b'\x00' * (2 * 44100 // 2)
             
             if dst is None:
                 # stream: pa.Stream = self.audio.open(rate=self.framerate,\
@@ -106,11 +111,12 @@ class Console:
         byte_count -= len(data)
         data += self.data * (byte_count // len(self.data)) +\
             self.data[:byte_count % len(self.data)]
-        self.data_index = (self.data_index + len(data)) % len(self.data)
+        self.data_index = (self.data_index + len(data))
         flag: int = pa.paContinue
+        self.data_index %= len(self.data)
         return (data, flag)
     
-    def save(self, start: int, end: int) -> None:
+    def save(self, start: int, end: int, shuffle: bool) -> None:
         start, end = min(start, end), max(start, end)
         file: io.IOBase = fd.asksaveasfile(filetypes=(('JSON', '*.json'),('All files', '*.*')),\
             defaultextension='.json')
@@ -120,6 +126,7 @@ class Console:
             json.dump({
                 'framerate': self.framerate,
                 'order': self.frames[0].order(),
+                'continuous': shuffle,
                 'frames': list(map(lpc.LPC.todict, self.frames[start:end]))
             }, file)
         except Exception as e:
@@ -130,35 +137,43 @@ class Console:
 def main():
     console: Console = Console([], 0)
     file: io.IOBase
-    with open('palparkpace.json', 'r') as file:
+    with open('d.json', 'r') as file:
         console.load(file)
-    running: bool = True
+    
+    scale_length: int = 900
     master: tk.Tk = tk.Tk()
-    scale_length: int = 400
+    
     shuffle: IntVar = IntVar()
-    start: tk.Scale = tk.Scale(master, from_=0, to=len(console.frames)-1, length=scale_length)
-    end: tk.Scale = tk.Scale(master, from_=0, to=len(console.frames)-1, length=scale_length)
-    freq: tk.Scale = tk.Scale(master, from_=60, to=200, length=scale_length)
-    dur: tk.Scale = tk.Scale(master, from_=1, to=20, length=scale_length)
-    button_start: tk.Button = tk.Button(master, text="Stop/start", command=console.toggle)
+    repeat: IntVar = IntVar(value=1)
+    
+    start: tk.Scale = tk.Scale(master, from_=0, to=len(console.frames)-1, length=scale_length, orient=tk.HORIZONTAL)
+    end: tk.Scale = tk.Scale(master, from_=0, to=len(console.frames)-1, length=scale_length, orient=tk.HORIZONTAL)
+    freq: tk.Scale = tk.Scale(master, from_=60, to=200, length=scale_length // 2, orient=tk.HORIZONTAL)
+    dur: tk.Scale = tk.Scale(master, from_=1, to=20, length=scale_length // 2, orient=tk.HORIZONTAL)
+    
     update = lambda _: (setattr(console, 'freq', freq.get()),\
         console.play(range(start.get(), end.get()+1), dur.get()/100,\
-        shuffle=shuffle.get()!=0))
+        shuffle=shuffle.get()!=0, repeat=repeat.get()!=0))
+    
+    button_start: tk.Button = tk.Button(master, text="Stop/start", command=console.toggle)
     check_shuffle: tk.Checkbutton = tk.Checkbutton(master, variable=shuffle, onvalue=1, offvalue=0,
         command = lambda: update(None))
+    check_repeat: tk.Checkbutton = tk.Checkbutton(master, variable=repeat, onvalue=1, offvalue=0,
+        command = lambda: update(None))
     button_save: tk.Button = tk.Button(master, text="Save",\
-        command=lambda: console.save(start.get(), end.get()+1))
+        command=lambda: console.save(start.get(), end.get()+1, shuffle.get()!=0))
     button_load: tk.Button = tk.Button(master, text="Load", command=lambda:\
         (console.load_dlg(), end.configure(to=len(console.frames)-1),\
         start.configure(to=len(console.frames)-1)))
-    start.grid(row=0, column=0)
-    end.grid(row=0, column=1)
-    freq.grid(row=0, column=2)
-    dur.grid(row=0, column=3)
-    button_start.grid(row=1, column=0)
-    check_shuffle.grid(row=1, column=1)
-    button_save.grid(row=1, column=2)
-    button_load.grid(row=1, column=3)
+    start.grid(row=0, column=0, columnspan=6)
+    end.grid(row=1, column=0, columnspan=6)
+    freq.grid(row=2, column=0, columnspan=3)
+    dur.grid(row=2, column=3, columnspan=3)
+    button_start.grid(row=3, column=0)
+    check_shuffle.grid(row=3, column=1)
+    check_repeat.grid(row=3, column=2)
+    button_save.grid(row=3, column=3)
+    button_load.grid(row=3, column=4)
     start.bind('<ButtonRelease-1>', update)
     end.bind('<ButtonRelease-1>', update)
     freq.bind('<ButtonRelease-1>', update)

@@ -89,7 +89,7 @@ def analyze(signal: np.ndarray,\
         windowed: np.ndarray = sample
         if window_type is not None:
             windowed = window_type(windowed)
-        ac: float = autocorrelation(windowed)
+        ac: float = autocorrelation(windowed) ** 2
         _coeffs, _gain = calc_burg(windowed, order)
         if not progressive:
             coeffs: np.ndarray = _coeffs[-1]

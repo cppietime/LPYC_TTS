@@ -1,89 +1,92 @@
+import json
 import math
 import numpy as np
 import random
 import struct
 import wave
 
-from vocoder import analyze, lpc
-
-with wave.open('palparkpace.wav', 'r') as wav:
-    n: int = wav.getnframes()
-    c: int = wav.getnchannels()
-    width: int = wav.getsampwidth()
-    rate: int = wav.getframerate()
-    frames = wav.readframes(n)
-    print(wav.getparams())
-
-signal = np.zeros(n)
-for i, _ in enumerate(signal):
-    s = 0
-    for j in range(i * width * c + width, i * width * c, -1):
-        s <<= 8
-        s += frames[j - 1]
-    if s >= 1 << (width * 8 - 1):
-        s -= 1 << (width * 8)
-    signal[i] = s * 2 ** -(width * 8 - 1)
+from vocoder import analyze, lpc, phoneme
 
 order = 48
 step = 441 * 1
 
 player = lpc.LPCPlayer(order)
+with open('h.json') as file:
+    phoneme_h = phoneme.Phoneme.fromdict(json.load(file))
+with open('e.json') as file:
+    phoneme_e = phoneme.Phoneme.fromdict(json.load(file))
+with open('l.json') as file:
+    phoneme_l = phoneme.Phoneme.fromdict(json.load(file))
+with open('o.json') as file:
+    phoneme_o = phoneme.Phoneme.fromdict(json.load(file))
+with open('uu.json') as file:
+    phoneme_uu = phoneme.Phoneme.fromdict(json.load(file))
+with open('g.json') as file:
+    phoneme_g = phoneme.Phoneme.fromdict(json.load(file))
+with open('aa.json') as file:
+    phoneme_aa = phoneme.Phoneme.fromdict(json.load(file))
+with open('s.json') as file:
+    phoneme_s = phoneme.Phoneme.fromdict(json.load(file))
+with open('w.json') as file:
+    phoneme_w = phoneme.Phoneme.fromdict(json.load(file))
+with open('r.json') as file:
+    phoneme_r = phoneme.Phoneme.fromdict(json.load(file))
+with open('d.json') as file:
+    phoneme_d = phoneme.Phoneme.fromdict(json.load(file))
+with open('a.json') as file:
+    phoneme_a = phoneme.Phoneme.fromdict(json.load(file))
+with open('y.json') as file:
+    phoneme_y = phoneme.Phoneme.fromdict(json.load(file))
+with open('u.json') as file:
+    phoneme_u = phoneme.Phoneme.fromdict(json.load(file))
+with open('v.json') as file:
+    phoneme_v = phoneme.Phoneme.fromdict(json.load(file))
+with open('p.json') as file:
+    phoneme_p = phoneme.Phoneme.fromdict(json.load(file))
+with open('m.json') as file:
+    phoneme_m = phoneme.Phoneme.fromdict(json.load(file))
 
-frames = analyze.analyze(signal, order, step * 2, step, None)
-print(frames[0])
+# output = np.concatenate((\
+    # np.zeros(5000),\
+    # phoneme_a.play_on(player, .2, 90, True),\
+    # phoneme_y.play_on(player, .1, 90),\
+    # np.zeros(6000),\
+    # phoneme_l.play_on(player, .2, 90),\
+    # phoneme_u.play_on(player, .15, 90),\
+    # phoneme_v.play_on(player, .25, 85),\
+    # np.zeros(6000),\
+    # phoneme_y.play_on(player, .2, 90),\
+    # phoneme_uu.play_on(player, .3, 84),\
+    # np.zeros(9000),\
+    # phoneme_p.play_on(player, -1, 88),\
+    # phoneme_a.play_on(player, .2, 90),\
+    # phoneme_m.play_on(player, .2, 88),\
+    # phoneme_e.play_on(player, .2, 94),\
+    # phoneme_l.play_on(player, .15, 90),\
+    # phoneme_u.play_on(player, .2, 90),\
+    # np.zeros(5000)
+# ))
 
-output = []
-cache = [0] * order
-cache_i = 0
-m, M = 0, 0
-# coeffs = frames[0][0].copy()
-i = 0
-phase = 0
-freq = 150
-# voice = frames[0][2]
-# gain = frames[0][1]
+phonology = phoneme.Phonology.load([
+    'a', 'aa', 'ae', 'au',
+    'e', 'ee',
+    'i',
+    'u', 'uu',
+    'o', 'oo',
+    'y', 'w', 'r',
+    's', 'z', 'f', 'v', 'c', 'j', 'th', 'thh',
+    'p', 'b', 'k', 'g', 't', 'd'
+], '.')
+output = phonology.play_str('thh-u r-E-ee-s i-z O-uu-v-r')
 
-threshold = 1e-10
-decay = 300
-interp = 1 - threshold ** (1 / decay)
-
-for __ in range(1):
-    output += [0] * (44100 // 7)
-    player.prime(frames[0], freq / rate)
+# for __ in range(1):
+    # output += [0] * (44100 // 7)
+    # player.prime(frames[0], freq / rate)
     
-    for frame in frames:
-        output += player.play(frame, (freq - 25 + random.random() * 50) / rate, step).tolist()
-        # ac: float = frame[2]
-        
-        # ac = ac ** 2
-        
-        # for _ in range(step * 1):
-            # pulse = (phase % (44100 / freq)) / (44100 / freq) * 2 - 1
-            # voice = voice + (ac - voice) * interp
-            # pulse *= voice
-            # pulse += (1 - ac) * random.random() * 2 - 1
-            # phase += 1# + math.sin(i * math.pi * 2 / 44100 * 1.4) * .1
-            # i += 1
-            # for j in range(order):
-                # # interp = 2 ** -8
-                # ocoef = coeffs[j]
-                # ncoef = frame[0][j]
-                # coeff = ocoef + (ncoef - ocoef) * interp
-                # coeffs[j] = coeff
-                # new_pulse = pulse - cache[cache_i - j - 1] * coeff
-                # if np.isinf(new_pulse):
-                    # print(pulse, new_pulse, coeff, interp, cache[cache_i - j - 1], frame, coeffs, cache)
-                    # exit(1)
-                # pulse = new_pulse
-            # cache[cache_i] = pulse
-            # cache_i = (cache_i + 1) % order
-            # gain = gain + (frame[1] - gain) * interp
-            # pulse *= gain ** .5
-            # m = min(m, pulse)
-            # M = max(M, pulse)
-            # output.append(pulse)
+    # for frame in frames:
+        # output += player.play(frame, (freq - 25 + random.random() * 50) / rate, step).tolist()
     
-    output += [0] * (44100 // 7)
+    # output += [0] * (44100 // 7)
 
 data = bytearray()
 for sample in output:

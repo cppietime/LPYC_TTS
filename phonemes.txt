@@ -1,0 +1,42 @@
+vowels:
+a	f(a)ther
+au	(au)dio
+ae	(a)sk
+aa	(a)nd
+e	(e)psilon
+ee	b(ee)t
+i	h(i)t
+o	p(o)tent
+oo	b(oo)k
+u	b(u)g
+uu	p(oo)l
+
+approximates:
+w	(w)et
+y	(y)et
+r	(r)ed
+
+nasals:
+l	(l)og
+n	(n)od
+m	(m)ad
+ng	pi(n)g
+
+fricatives:
+s	(s)aw
+z	(z)ip
+f	(f)ar
+v	(v)ery
+c	(sh)ine
+j	bad(ge)
+th	(th)ink
+thh	(th)at
+h	(h)at
+
+plosives:
+b	(b)ag
+p	(p)it
+g	(g)irl
+k	(c)at
+d	(d)og
+t	(t)op
