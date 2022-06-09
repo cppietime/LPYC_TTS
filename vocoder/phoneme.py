@@ -3,7 +3,7 @@ import json
 import numpy as np
 from os import path
 import random
-from typing import List, Dict, ClassVar
+from typing import List, Dict, ClassVar, Tuple
 
 from . import lpc
 
@@ -14,7 +14,8 @@ class Phoneme:
     framerate: int
     
     def play_on(self, player: lpc.LPCPlayer, duration: float, frequency: float,\
-            prime: bool = False, *, frame_size: float = .01, vibrato: float = 0) -> np.ndarray:
+            prime: bool = False, *, frame_size: float = .01, vibrato: float = 0,
+            funcid: int=0, pm: Tuple[float, float]=(0,0)) -> np.ndarray:
         if duration < 0 or not self.continuous:
             n_frames: int = len(self.frames)
             i_frames: List[int] = list(range(n_frames))
@@ -36,7 +37,7 @@ class Phoneme:
             samples[i*n_samples : (i+1)*n_samples] =\
                 player.play(self.frames[i_frame],\
                 frequency * (1 + v_accum) / self.framerate,\
-                n_samples)
+                n_samples, funcid, pm)
                 
         return samples
     
@@ -106,7 +107,41 @@ class Phonology:
                         self.player, phoneme_len * lenmul, base_freq * freqmul, prime,\
                         vibrato=vibrato)))
                     prime = False
-            samps = np.concatenate((samps, np.zeros(round(self.framerate * .2))))
+            samps = np.concatenate((samps, np.zeros(round(self.framerate * .1))))
+        return samps
+    
+    def sing_str(self, sentence: str, *, base_freq: float = 100, phoneme_len: float = .15,
+            duration: float=.25, vibrato: float = .03, funcid: int=0,
+            true_vib: Tuple[float, float]=(0,0),
+            pm: Tuple[float, float]=(0,0)) -> np.ndarray:
+        samps: np.ndarray = np.array([], dtype=float)
+        words: List[str] = sentence.split()
+        word: str
+        for word in words:
+            prime: bool = True
+            sounds: List[str] = word.split('-')
+            sound: str
+            len_left: float = duration
+            lens: List[float] = [-1] * len(sounds)
+            cont_ctr: int = 0
+            for i, sound in enumerate(sounds):
+                phon = self.phonemes[sound]
+                if not phon.continuous:
+                    lens[i] = len(phon.frames) * .01
+                    len_left -= lens[i]
+                else:
+                    cont_ctr += 1
+            for i, sound in enumerate(sounds):
+                phon = self.phonemes[sound]
+                if phon.continuous:
+                    lens[i] = len_left / cont_ctr
+                    len_left -= lens[i]
+                if sound and sound in self.phonemes:
+                    samps = np.concatenate((samps, self.phonemes[sound].play_on(\
+                        self.player, lens[i], base_freq, prime,\
+                        vibrato=vibrato, pm=pm, funcid=funcid)))
+                    prime = False
+            samps = np.concatenate((samps, np.zeros(round(self.framerate * .1))))
         return samps
     
     @staticmethod

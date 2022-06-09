@@ -53,7 +53,7 @@ class Console:
             -> None:
         self.lock.acquire()
         try:
-            # self.player.prime(self.frames[indices[0]], self.freq / self.framerate)
+            self.player.prime(self.frames[indices[0]], self.freq / self.framerate)
             sample_array: bytearray = bytearray()
             
             index: int
