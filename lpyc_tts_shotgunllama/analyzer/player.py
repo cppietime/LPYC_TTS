@@ -11,7 +11,7 @@ from tkinter import filedialog as fd, Checkbutton, IntVar
 from typing import List, Tuple, Optional, Union
 import wave
 
-from . import lpc
+from lpyc_tts_shotgunllama import lpc
 
 @dataclass
 class Console:

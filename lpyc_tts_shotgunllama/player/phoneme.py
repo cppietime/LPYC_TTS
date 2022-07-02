@@ -5,7 +5,7 @@ from os import path
 import random
 from typing import List, Dict, ClassVar, Tuple
 
-from . import lpc
+from lpyc_tts_shotgunllama import lpc
 
 @dataclass
 class Phoneme:
@@ -20,7 +20,7 @@ class Phoneme:
             n_frames: int = len(self.frames)
             i_frames: List[int] = list(range(n_frames))
         else:
-            n_frames: int = int((duration + frame_size * .99) // frame_size)
+            n_frames: int = int((duration + frame_size * .00099) // frame_size)
             i_frames: List[int] = [random.choice(range(len(self.frames))) for _ in range(n_frames)]
         n_samples: int = round(frame_size * self.framerate)
         samples: np.ndarray = np.zeros(n_samples * n_frames)
@@ -135,13 +135,11 @@ class Phonology:
                 phon = self.phonemes[sound]
                 if phon.continuous:
                     lens[i] = len_left / cont_ctr
-                    len_left -= lens[i]
                 if sound and sound in self.phonemes:
                     samps = np.concatenate((samps, self.phonemes[sound].play_on(\
                         self.player, lens[i], base_freq, prime,\
                         vibrato=vibrato, pm=pm, funcid=funcid)))
                     prime = False
-            samps = np.concatenate((samps, np.zeros(round(self.framerate * .1))))
         return samps
     
     @staticmethod

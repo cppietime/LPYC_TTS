@@ -4,7 +4,8 @@ import numpy as np
 import sys
 from typing import Tuple, List, Optional, Callable, Union
 
-from . import windows, lpc
+from lpyc_tts_shotgunllama import lpc
+from lpyc_tts_shotgunllama.analyzer import windows
 
 def calc_burg(signal: np.ndarray, max_order: int) -> Tuple[List[np.ndarray], np.ndarray]:
     """
